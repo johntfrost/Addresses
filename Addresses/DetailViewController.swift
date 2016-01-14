@@ -7,10 +7,16 @@
 //
 
 import UIKit
+import Contacts
+
 
 class DetailViewController: UIViewController {
 
     @IBOutlet weak var detailDescriptionLabel: UILabel!
+    @IBOutlet weak var imageView: UIImageView!
+    @IBOutlet weak var contactNameLabel: UILabel!
+    @IBOutlet weak var contactPhoneNumberLabel: UILabel!
+    @IBOutlet weak var addressLabel: UILabel!
 
 
     var detailItem: AnyObject? {
@@ -22,9 +28,37 @@ class DetailViewController: UIViewController {
 
     func configureView() {
         // Update the user interface for the detail item.
-        if let detail = self.detailItem {
-            if let label = self.detailDescriptionLabel {
-                label.text = detail.description
+        if let contact = self.detailItem {
+            if let label = self.contactNameLabel {
+                label.text = CNContactFormatter.stringFromContact(contact as! CNContact, style: .FullName)
+            }
+            
+            if let conData = contact.imageData {
+                imageView.image = UIImage(data: conData!)
+                
+            }else {
+                imageView.image = nil
+            }
+            
+            if let phoneNumberLabel = self.contactPhoneNumberLabel {
+                var numberArray = [String]()
+                for number in contact.phoneNumbers {
+                    let phoneNumber = number.value as! CNPhoneNumber
+                    numberArray.append(phoneNumber.stringValue)
+                }
+                phoneNumberLabel.text = numberArray.joinWithSeparator(", ")
+                
+            }
+            
+            if let addr = contact.postalAddresses.first {
+                let firstAddress = addr.value as! CNPostalAddress
+                let formatter = CNPostalAddressFormatter()
+                let formattedAddress = formatter.stringFromPostalAddress(firstAddress)
+               
+                if let label = addressLabel {
+                    label.text = formattedAddress
+                }
+                
             }
         }
     }

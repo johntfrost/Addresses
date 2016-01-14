@@ -7,11 +7,16 @@
 //
 
 import UIKit
+import Contacts
+import ContactsUI
+
 
 class MasterViewController: UITableViewController {
 
     var detailViewController: DetailViewController? = nil
     var objects = [AnyObject]()
+    var contacts = [CNContact]()
+    
 
 
     override func viewDidLoad() {
@@ -24,6 +29,14 @@ class MasterViewController: UITableViewController {
         if let split = self.splitViewController {
             let controllers = split.viewControllers
             self.detailViewController = (controllers[controllers.count-1] as! UINavigationController).topViewController as? DetailViewController
+        }
+        
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)) {
+            self.contacts = self.findContacts()
+            
+            dispatch_async(dispatch_get_main_queue()) {
+                self.tableView.reloadData()
+            }
         }
     }
 
@@ -42,15 +55,35 @@ class MasterViewController: UITableViewController {
         let indexPath = NSIndexPath(forRow: 0, inSection: 0)
         self.tableView.insertRowsAtIndexPaths([indexPath], withRowAnimation: .Automatic)
     }
+    
+    func findContacts() -> [CNContact] {
+        let store = CNContactStore()
+        
+        let keysToFetch = [CNContactFormatter.descriptorForRequiredKeysForStyle(.FullName), CNContactImageDataKey, CNContactPhoneNumbersKey, CNContactPostalAddressesKey]
+        let fetchRequest = CNContactFetchRequest(keysToFetch: keysToFetch)
+        
+        var contacts = [CNContact]()
+        
+        do {
+            try store.enumerateContactsWithFetchRequest(fetchRequest, usingBlock: { (let contact, let stop) -> Void in
+                contacts.append(contact)
+            })
+        }
+        catch let error as NSError {
+            print(error.localizedDescription)
+        }
+        return contacts
+    }
+    
 
     // MARK: - Segues
 
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
         if segue.identifier == "showDetail" {
             if let indexPath = self.tableView.indexPathForSelectedRow {
-                let object = objects[indexPath.row] as! NSDate
+                let contact = contacts[indexPath.row] as CNContact
                 let controller = (segue.destinationViewController as! UINavigationController).topViewController as! DetailViewController
-                controller.detailItem = object
+                controller.detailItem = contact
                 controller.navigationItem.leftBarButtonItem = self.splitViewController?.displayModeButtonItem()
                 controller.navigationItem.leftItemsSupplementBackButton = true
             }
@@ -64,14 +97,14 @@ class MasterViewController: UITableViewController {
     }
 
     override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return objects.count
+        return self.contacts.count
     }
 
     override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCellWithIdentifier("Cell", forIndexPath: indexPath)
 
-        let object = objects[indexPath.row] as! NSDate
-        cell.textLabel!.text = object.description
+        let contact = contacts[indexPath.row] as CNContact
+        cell.textLabel!.text = "\(contact.givenName) \(contact.familyName)"
         return cell
     }
 
